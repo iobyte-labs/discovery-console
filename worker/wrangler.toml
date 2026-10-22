@@ -1,0 +1,50 @@
+# Cloudflare Worker configuration.
+#
+# Nothing secret is in this file, and nothing secret may ever be put in it: it is committed
+# to a public repository. Secrets are set with `wrangler secret put`, which stores them
+# encrypted and never writes them to disk.
+#
+#   wrangler secret put GITHUB_TOKEN        # fine-grained, Contents:write, one repo only
+#   wrangler secret put OPENROUTER_API_KEY  # the free-tier key
+#
+# The GitHub token is the one worth being careful with. Scope it to the single private data
+# repository with Contents: write and nothing else, give it an expiry, and rotate it if this
+# Worker is ever redeployed from somewhere you do not control.
+
+# No usage telemetry from the machine that handles CVs. Wrangler's own metrics are
+# anonymous and harmless, but a deploy tool phoning home from a workstation that has just
+# read somebody's CV is the kind of default worth turning off deliberately.
+send_metrics = false
+
+name = "eucd-cv-intake"
+main = "index.js"
+compatibility_date = "2026-10-01"
+
+# Only the origin the console is actually served from. There is no wildcard, because this
+# Worker holds credentials: any page that may call it from a browser is a page that may
+# spend the model quota and write to the repository.
+[vars]
+ALLOWED_ORIGINS = "https://iobyte-labs.github.io"
+PUBLIC_ORIGIN = "https://iobyte-labs.github.io"
+DATA_REPO = "iobyte-labs/personal-outreach"
+DATA_BRANCH = "main"
+DEFAULT_COUNTRIES = "de"
+AVAILABLE_SECTORS = "pharma,automotive"
+
+# Seeker records: the token hash, the email, and the per-seeker CV key.
+#
+# This namespace is the only place a CV key exists. Destroying an entry is how a CV is
+# deleted — see docs/cv-intake.md — so it needs a backup policy chosen deliberately: too
+# little and a key loss is an unreadable CV with no recovery, too much and a "deleted" key
+# lives on in a backup, which defeats the point. Decide the retention of the backups, not
+# just of the data.
+[[kv_namespaces]]
+binding = "SEEKERS"
+id = "set-this-after-wrangler-kv-namespace-create"
+
+[observability]
+enabled = true
+
+# No logpush of request bodies. A body here is somebody's CV.
+[placement]
+mode = "smart"

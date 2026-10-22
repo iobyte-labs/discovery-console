@@ -1,0 +1,100 @@
+# Tests for the CV envelope, in both languages that read it.
+#
+# The interop job is the point. The Worker encrypts in JavaScript and the send path decrypts
+# in Python; if those two ever disagree, a CV cannot be attached to the email it was kept
+# for, and no single-language test would notice.
+
+name: Worker
+
+on:
+  push:
+    branches: [main]
+    paths: ["worker/**", "layouts/**", "assets/**", "content/**", "hugo.toml", ".github/workflows/worker.yml"]
+  pull_request:
+    paths: ["worker/**", "layouts/**", "assets/**", "content/**", "hugo.toml", ".github/workflows/worker.yml"]
+  workflow_dispatch:
+
+concurrency:
+  group: worker-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  site:
+    name: the site builds
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: peaceiris/actions-hugo@v3
+        with:
+          hugo-version: "0.160.1"
+          extended: true
+      - name: Build
+        run: hugo --quiet --destination public
+      # The intake page handles a CV, so the hosts it may reach are listed rather than
+      # inherited. A build that loses the policy is a build that lets any script run on a
+      # page holding somebody's CV.
+      - name: The intake page keeps its content policy
+        run: |
+          set -euo pipefail
+          page=public/apply/index.html
+          test -f "$page" || { echo "::error::the intake page was not built"; exit 1; }
+          for directive in "default-src 'none'" "base-uri 'none'" "form-action 'none'"; do
+            grep -q "$directive" "$page" || {
+              echo "::error::the intake page lost: $directive"; exit 1; }
+          done
+          if grep -qE "connect-src[^;\"]*\*" "$page"; then
+            echo "::error::connect-src must name hosts, never a wildcard"; exit 1
+          fi
+          echo "content policy intact"
+
+  envelope:
+    name: CV envelope, both readers
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v4
+        with:
+          # Matches .nvmrc and the engines field. Current wrangler refuses anything older,
+          # and Node 20 reached end of life in April 2026.
+          node-version-file: ".nvmrc"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install the Python reader's one dependency
+        run: pip install --quiet cryptography pytest
+
+      # The same command a developer runs, so the two cannot drift and leave only one of
+      # them correct. `node --test .` worked on Node 20 and fails on Node 22.
+      - name: JavaScript suite
+        run: npm test
+        working-directory: worker
+
+      # Runs the node fixture generator itself, so this job fails if the two languages
+      # drift apart rather than passing twice in isolation.
+      - name: Python reader, and the cross-language contract
+        run: pytest worker/test_cvcrypto.py -q
+
+      # A CV must never be committed in the clear, and a key must never be committed at all.
+      - name: No plaintext CV, no keys
+        run: |
+          set -uo pipefail
+          if git ls-files | grep -iE '\.(pdf|docx?)$'; then
+            echo "::error::a CV-shaped file is tracked; CVs are encrypted and live outside this repo"
+            exit 1
+          fi
+          hits=$(grep -rIlE '"(ciphertext|iv)"[[:space:]]*:' --include='*.json' . 2>/dev/null \
+                 | grep -v node_modules || true)
+          if [ -n "$hits" ]; then
+            echo "::error::a CV envelope is committed here; envelopes belong in a seeker's private area"
+            echo "$hits"
+            exit 1
+          fi
+          echo "no CV material in this repository"

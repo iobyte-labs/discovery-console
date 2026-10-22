@@ -1,0 +1,66 @@
+# Tests for the CV envelope, in both languages that read it.
+#
+# The interop job is the point. The Worker encrypts in JavaScript and the send path decrypts
+# in Python; if those two ever disagree, a CV cannot be attached to the email it was kept
+# for, and no single-language test would notice.
+
+name: Worker
+
+on:
+  push:
+    branches: [main]
+    paths: ["worker/**", ".github/workflows/worker.yml"]
+  pull_request:
+    paths: ["worker/**", ".github/workflows/worker.yml"]
+  workflow_dispatch:
+
+concurrency:
+  group: worker-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  envelope:
+    name: CV envelope, both readers
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install the Python reader's one dependency
+        run: pip install --quiet cryptography pytest
+
+      - name: JavaScript writer
+        run: node --test worker/
+
+      # Runs the node fixture generator itself, so this job fails if the two languages
+      # drift apart rather than passing twice in isolation.
+      - name: Python reader, and the cross-language contract
+        run: pytest worker/test_cvcrypto.py -q
+
+      # A CV must never be committed in the clear, and a key must never be committed at all.
+      - name: No plaintext CV, no keys
+        run: |
+          set -uo pipefail
+          if git ls-files | grep -iE '\.(pdf|docx?)$'; then
+            echo "::error::a CV-shaped file is tracked; CVs are encrypted and live outside this repo"
+            exit 1
+          fi
+          hits=$(grep -rIlE '"(ciphertext|iv)"[[:space:]]*:' --include='*.json' . 2>/dev/null \
+                 | grep -v node_modules || true)
+          if [ -n "$hits" ]; then
+            echo "::error::a CV envelope is committed here; envelopes belong in a seeker's private area"
+            echo "$hits"
+            exit 1
+          fi
+          echo "no CV material in this repository"

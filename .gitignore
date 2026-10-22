@@ -2,6 +2,8 @@
 /public/
 /resources/
 .hugo_build.lock
+/worker/node_modules/
+/worker/.wrangler/
 
 # This repository must never hold a dataset. These patterns are a backstop for a
 # well-meaning copy, not a substitute for the CI check that greps the built site.

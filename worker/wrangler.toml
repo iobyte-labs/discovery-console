@@ -11,6 +11,11 @@
 # repository with Contents: write and nothing else, give it an expiry, and rotate it if this
 # Worker is ever redeployed from somewhere you do not control.
 
+# No usage telemetry from the machine that handles CVs. Wrangler's own metrics are
+# anonymous and harmless, but a deploy tool phoning home from a workstation that has just
+# read somebody's CV is the kind of default worth turning off deliberately.
+send_metrics = false
+
 name = "eucd-cv-intake"
 main = "index.js"
 compatibility_date = "2026-10-01"

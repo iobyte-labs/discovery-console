@@ -71,14 +71,45 @@ writes to a private repository and a key with a quota. So most of the Worker is 
 - **No internals in a response.** A failure is logged and the browser gets a sentence; the
   test checks that a repository name and a token cannot appear in an error.
 
+## Where wrangler lives
+
+Wrangler is Cloudflare's command-line tool for Workers — it creates the key store, holds
+the secrets and ships the code. It is **dev-time only**: the deployed Worker never uses it,
+and nothing in `index.js` imports it.
+
+It is a pinned devDependency here rather than a global install, because a global one drifts
+between machines and a deploy tool that changes version underneath you is how a deploy
+starts behaving differently on a Tuesday. The lockfile is committed for the same reason.
+
+```bash
+cd worker
+npm install          # wrangler, pinned, into worker/node_modules (gitignored)
+npm run check        # validates wrangler.toml and bundles, without deploying
+```
+
+**Node 22 or newer is required** — current wrangler refuses anything older, and Node 20
+reached end of life in April 2026, so it is not receiving security patches either way.
+
+`node_modules` here is around 220 MB. It is a deploy-time tool, not a dependency of the
+site, and nothing in it reaches the browser or the Worker.
+
 ## Deploying
 
 ```bash
-wrangler kv namespace create SEEKERS       # put the id in wrangler.toml
-wrangler secret put GITHUB_TOKEN           # fine-grained, Contents:write, one repo, with an expiry
-wrangler secret put OPENROUTER_API_KEY
-wrangler deploy
+cd worker
+npx wrangler login                         # once, opens a browser
+npx wrangler kv namespace create SEEKERS   # put the printed id into wrangler.toml
+npx wrangler secret put GITHUB_TOKEN       # fine-grained, Contents:write, one repo, with an expiry
+npx wrangler secret put OPENROUTER_API_KEY
+npm run deploy
 ```
+
+Then put the Worker's URL into `hugo.toml` as `params.worker`, so the intake page knows
+where to post and the page's content policy names that host. Until it is set, the page says
+uploads are not configured rather than failing at the first attempt.
+
+Deployment is manual on purpose. Doing it from CI would mean a Cloudflare API token living
+as a GitHub secret — a third credential, to save a command that runs rarely.
 
 `wrangler.toml` is committed and holds nothing secret. The KV namespace is the only place a
 CV key exists, so choose its **backup** retention deliberately: too little and a lost key is

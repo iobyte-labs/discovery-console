@@ -97,6 +97,43 @@ kept separately from the CV rather than the CV being re-read each time.
 It also assumes the key store is authoritative and backed up carefully. A lost key is an
 unreadable CV with no recovery, which is the same property that makes deletion work.
 
+## Identity, without accounts
+
+A seeker has no GitHub account and no password, so identity cannot be their email address:
+an address is a claim, not a proof, and anyone who typed somebody else's would read and
+overwrite their CV. What a seeker holds instead is a **capability** — a random token issued
+on first upload and kept in their browser. Only its hash is stored, so a leak of the key
+store does not hand over anybody's account.
+
+The honest limit: **lose the browser storage and you lose access.** There is no password
+reset, because there is no password and no verified address to send one to. The token is
+shown once as a recovery code for exactly that reason, and a non-technical user will not
+save it. Real recovery means verifying an email address, which means sending mail, which is
+a dependency this does not have — it is the next thing to decide, not something already
+solved.
+
+## Keeping personal data out of the ranking profile
+
+The ranking profile goes to a public engine, so it must carry no personal data. Three layers,
+because the first two are not enough on their own:
+
+1. **The prompt** asks for a role description and no personal data. A model mostly complies.
+2. **A whitelist** rebuilds the output field by field, so anything the model invented — a
+   `name`, an `email`, an `exfiltrate` — has nowhere to land.
+3. **A scrubber** removes addresses, phone numbers and URLs from the free-text fields that
+   *do* survive.
+
+The third layer exists because the second is not sufficient, and the test that proved it is
+worth keeping in mind: `headline` is whitelisted, and a model returned
+`"Bhargav Muktha, name@example.org, seeking QA roles"` into it. A whitelist decides which
+fields survive; it cannot decide what is inside one.
+
+A name cannot be stripped this way — a name looks like any other word — which is why the
+headline is capped and why nothing downstream treats it as identifying.
+
+Facts are deliberately **not** scrubbed. They name employers and dates because that is what
+a cover letter cites, and they stay on the private side.
+
 ## Who may hold what
 
 | | Credentials | Personal data |

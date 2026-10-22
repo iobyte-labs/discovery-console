@@ -82,13 +82,17 @@ between machines and a deploy tool that changes version underneath you is how a 
 starts behaving differently on a Tuesday. The lockfile is committed for the same reason.
 
 ```bash
+nvm use              # reads .nvmrc at the repository root
 cd worker
 npm install          # wrangler, pinned, into worker/node_modules (gitignored)
+npm test             # 71 tests
 npm run check        # validates wrangler.toml and bundles, without deploying
 ```
 
 **Node 22 or newer is required** — current wrangler refuses anything older, and Node 20
 reached end of life in April 2026, so it is not receiving security patches either way.
+`.nvmrc` pins it and `engine-strict=true` in `.npmrc` makes npm refuse rather than warn,
+because a wrong Node otherwise surfaces much later as a confusing wrangler error.
 
 `node_modules` here is around 220 MB. It is a deploy-time tool, not a dependency of the
 site, and nothing in it reaches the browser or the Worker.

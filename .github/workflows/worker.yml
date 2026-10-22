@@ -60,7 +60,9 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          # Matches .nvmrc and the engines field. Current wrangler refuses anything older,
+          # and Node 20 reached end of life in April 2026.
+          node-version-file: ".nvmrc"
 
       - uses: actions/setup-python@v5
         with:
@@ -69,8 +71,11 @@ jobs:
       - name: Install the Python reader's one dependency
         run: pip install --quiet cryptography pytest
 
+      # The same command a developer runs, so the two cannot drift and leave only one of
+      # them correct. `node --test .` worked on Node 20 and fails on Node 22.
       - name: JavaScript suite
-        run: node --test worker/
+        run: npm test
+        working-directory: worker
 
       # Runs the node fixture generator itself, so this job fails if the two languages
       # drift apart rather than passing twice in isolation.

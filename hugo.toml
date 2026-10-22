@@ -1,0 +1,39 @@
+# The console's shell. It holds no data: everything the console shows is fetched from the
+# GitHub API in the browser, with the reader's own token. See README.md.
+
+baseURL = "/"
+languageCode = "en-gb"
+title = "Company Discovery"
+enableRobotsTXT = false
+# No taxonomies, no RSS, no sitemap. This is a control panel, not a publication, and it
+# should present no discovery surface at all.
+disableKinds = ["taxonomy", "term", "sitemap", "rss"]
+
+[params]
+  engine = "iobyte-labs/eu-company-discovery"
+  runner = "iobyte-labs/discovery-runner"
+  description = "A console over a private company-discovery dataset. The site holds nothing; your token reads everything."
+  # Only a token that can administer the runner repository may use the console. This
+  # restricts the UI, not the data: GitHub itself is what refuses a token that cannot read
+  # the repository, and that boundary holds whether or not this flag is set.
+  require_admin = true
+
+[markup.goldmark.renderer]
+  unsafe = true
+[markup.tableOfContents]
+  startLevel = 2
+  endLevel = 3
+
+[[menu.main]]
+  name = "Start"
+  url = "/"
+  weight = 1
+[[menu.main]]
+  name = "Console"
+  url = "/app/"
+  weight = 2
+
+[outputs]
+  home = ["HTML"]
+  section = ["HTML"]
+  page = ["HTML"]

@@ -1,0 +1,77 @@
+{{ define "main" }}
+<section class="band hero">
+  <div class="wrap">
+    <p class="k">Industry associations · EU · sector-neutral</p>
+    <h1>Every member company, and the address they published.</h1>
+    <p class="lede">Give it an association's member directory. It reads the members, visits
+      each company's own site, and records the recruitment contacts those companies chose to
+      publish — with the page each one was read from, and the date.</p>
+    <div class="row mt">
+      <a class="btn primary" href="/app/">Open the console</a>
+      <a class="btn quiet" href="https://github.com/{{ .Site.Params.engine }}">Read the engine</a>
+    </div>
+  </div>
+</section>
+
+<section class="band alt">
+  <div class="wrap">
+    <p class="k">How it runs</p>
+    <h2 class="section">Four steps, twice a week</h2>
+    <p class="sub">Each step picks its own work out of the dataset, so a step with nothing to
+      do costs seconds rather than breaking a chain.</p>
+    <ol class="flow">
+      <li><strong>You add an association</strong>
+        <span>Paste the page that lists its members. No selectors, no code.</span></li>
+      <li><strong>It reads the members</strong>
+        <span>The companies a directory links to are very largely its members. Each record
+          says how it was found, because a sponsor looks the same as a member.</span></li>
+      <li><strong>It visits each company's own site</strong>
+        <span>Careers page, contact page, imprint, homepage last — stopping at the first
+          address that is meant for applications.</span></li>
+      <li><strong>You read the result</strong>
+        <span>Filter by country, sector, status or evidence, and see where every address
+          came from.</span></li>
+    </ol>
+  </div>
+</section>
+
+<section class="band">
+  <div class="wrap">
+    <p class="k">What it will not do</p>
+    <h2 class="section">The lines it does not cross</h2>
+    <div class="grid c3">
+      <div class="card">
+        <h3>Guess an address</h3>
+        <p>No first.last@company construction, no probing to see what bounces. An address is
+          recorded because a page published it, with that page named, or not at all.</p>
+      </div>
+      <div class="card">
+        <h3>Keep a person's address</h3>
+        <p>An address naming an individual is dropped where it is found and refused again on
+          the way into the database. A functional mailbox is business contact information;
+          a named person's is not.</p>
+      </div>
+      <div class="card">
+        <h3>Work around a refusal</h3>
+        <p>A robots rule, a login wall or a hard refusal is recorded as a result and left
+          alone. No retries dressed up as someone else.</p>
+      </div>
+      <div class="card">
+        <h3>Hammer a small server</h3>
+        <p>Ten requests a minute per domain, one page at a time per site, with every crawl
+          bounded by a deadline it stops cleanly at.</p>
+      </div>
+      <div class="card">
+        <h3>Publish your data</h3>
+        <p>This site is a static shell with nothing in it. The dataset lives in a private
+          repository and reaches your browser only after you sign in.</p>
+      </div>
+      <div class="card">
+        <h3>Send anything</h3>
+        <p>No mail leaves here, and no application is written here. That belongs to a
+          separate private tool that never runs in CI.</p>
+      </div>
+    </div>
+  </div>
+</section>
+{{ end }}

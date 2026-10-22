@@ -1,0 +1,88 @@
+# Publish the console.
+#
+# This repository is public, which is what makes Pages free and what makes the whole design
+# work: the published site is a static shell with no data in it, and the dataset it shows is
+# fetched from a private repository in the reader's browser, with the reader's own token.
+#
+# The job below must never put data into the build. The check that enforces that runs before
+# the deploy, not after.
+
+name: Publish the console
+
+on:
+  push:
+    branches: [main]
+    paths: ["layouts/**", "assets/**", "content/**", "static/**", "hugo.toml",
+            ".github/workflows/pages.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+env:
+  HUGO_VERSION: "0.160.1"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install Hugo
+        run: |
+          curl -sSL -o hugo.deb \
+            "https://github.com/gohugoio/hugo/releases/download/v${HUGO_VERSION}/hugo_extended_${HUGO_VERSION}_linux-amd64.deb"
+          sudo dpkg -i hugo.deb
+          hugo version
+
+      - uses: actions/configure-pages@v5
+        id: pages
+        with:
+          enablement: true   # switch Pages on the first time this runs
+
+      - name: Build
+        run: hugo --minify --baseURL "${{ steps.pages.outputs.base_url }}/"
+
+      # The property the whole design rests on. A company name or a contact address in the
+      # built site would mean the dataset had been published, so this fails the deploy
+      # rather than reporting it.
+      - name: The build must contain no data
+        run: |
+          set -uo pipefail
+          hits=$(grep -rIlE '[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}' public/ \
+                 | grep -v 'fonts/' || true)
+          if [ -n "$hits" ]; then
+            echo "::error::these built files contain something shaped like a mail address:"
+            echo "$hits"
+            grep -rIhoE '[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}' public/ | sort -u | head
+            exit 1
+          fi
+          for forbidden in companies.json companies.csv __testdata.json; do
+            if find public -name "$forbidden" | grep -q .; then
+              echo "::error::$forbidden is in the build"
+              exit 1
+            fi
+          done
+          echo "the build carries no dataset"
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: public
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

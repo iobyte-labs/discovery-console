@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="en" data-theme-init>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Console · {{ .Site.Title }}</title>
+{{/* No third-party origin at all. This page holds an access token, so the only host it
+     may talk to is the GitHub API. */}}
+<meta http-equiv="Content-Security-Policy"
+      content="default-src 'none'; img-src 'self' data:; font-src 'self';
+               style-src 'self' 'unsafe-inline'; script-src 'unsafe-inline';
+               base-uri 'none'; form-action 'none';
+               connect-src https://api.github.com{{ if hugo.IsServer }} ws://localhost:* http://localhost:*{{ end }}">
+{{ $css := resources.Get "css/console.css" | minify }}
+<style>{{ $css.Content | safeCSS }}</style>
+</head>
+<body>
+
+<header class="bar">
+  <a class="brand" href="/"><span class="mark" aria-hidden="true">CD</span> Console</a>
+  <span id="repoPill" class="pill mute" hidden></span>
+  <span id="busyPill" class="pill info" hidden><i class="dot"></i> working…</span>
+  <span class="grow"></span>
+  <span id="whoTxt" class="who"></span>
+  <button class="ghost" type="button" id="btnTheme">Theme</button>
+  <button class="ghost" type="button" id="btnRefresh" hidden>Refresh</button>
+  <button class="ghost" type="button" id="btnOut" hidden>Sign out</button>
+</header>
+
+<!-- Shown while a remembered token is being checked, so the gate does not flash. -->
+<section id="splash" class="centre">
+  <p class="muted"><span class="spin" aria-hidden="true"></span> Restoring your session…</p>
+</section>
+
+<!-- The gate. Everything below it stays empty until GitHub accepts the token. -->
+<section id="gate" class="centre" hidden>
+  <div class="gatecard">
+    <p class="k">Sign in</p>
+    <h1>Open your dataset</h1>
+    <p class="note">This console reads the private repository
+      <code id="runnerName"></code> and starts its workflows. It stores no data of its own:
+      the page you are reading is a static file with nothing in it, and everything you see
+      is fetched live from GitHub with your own token. Without a token that can read that
+      repository, this page shows nothing to anyone.</p>
+
+    <form id="gateForm" autocomplete="off">
+      <label class="field">
+        <span class="k">Access token</span>
+        <input type="password" id="inTok" placeholder="github_pat_…" spellcheck="false"
+               autocomplete="off" required>
+      </label>
+      <label class="check">
+        <input type="checkbox" id="inRemember">
+        <span>Stay signed in on this device</span>
+      </label>
+      <p class="hint">Left unticked, the token is held for this tab only and forgotten when
+        you close it.</p>
+      <button class="btn primary" type="submit" id="btnIn">Sign in</button>
+      <p id="gateMsg" class="msg" hidden></p>
+    </form>
+
+    <details class="how">
+      <summary>How do I get a token?</summary>
+      <ol>
+        <li>Open <span class="mono">github.com/settings/personal-access-tokens</span> and
+          choose <b>Generate new token</b> (fine-grained).</li>
+        <li>Resource owner: <b id="ownerName" class="mono"></b> — the organisation, not your
+          username.</li>
+        <li>Repository access: <b>Only select repositories</b> →
+          <b id="repoNameShort" class="mono"></b>, and nothing else.</li>
+        <li>Permissions: <b>Contents → Read-only</b> and <b>Actions → Read and write</b>.</li>
+        <li>Give it the shortest expiry you can live with.</li>
+      </ol>
+      <p class="note">The token is sent only to <code>api.github.com</code>. This page loads
+        no third-party script, so there is nothing here that could read it.</p>
+    </details>
+  </div>
+</section>
+
+<main id="app" hidden>
+  <nav class="tabs" aria-label="Sections" id="tabs"></nav>
+
+  <!-- ---------------------------------------------------------------- overview -->
+  <section id="v-overview" class="view">
+    <div class="card">
+      <div class="cardhead">
+        <h2>Where the dataset stands</h2>
+        <span class="muted mono" id="dataAge"></span>
+      </div>
+      <div class="tiles" id="tiles"></div>
+      <div class="meter" id="meter" aria-hidden="true"></div>
+      <div class="legend" id="legend"></div>
+    </div>
+    <div class="two">
+      <div class="card">
+        <h2>What to do next</h2>
+        <div id="next"></div>
+      </div>
+      <div class="card">
+        <div class="cardhead"><h2>Recent runs</h2><a id="actionsLink" class="muted" target="_blank" rel="noopener">on GitHub ↗</a></div>
+        <div id="runs"><p class="muted">Loading…</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ---------------------------------------------------------------- companies -->
+  <section id="v-companies" class="view" hidden>
+    <div class="toolbar">
+      <input type="search" id="q" placeholder="company, domain, address…" aria-label="Search">
+      <select id="fCountry" aria-label="Country"></select>
+      <select id="fSector" aria-label="Sector"></select>
+      <select id="fStatus" aria-label="Crawl status"></select>
+      <select id="fContact" aria-label="Contact">
+        <option value="">Any contact</option>
+        <option value="has">Has a contact</option>
+        <option value="none">No contact</option>
+        <option value="recruitment">Recruitment address</option>
+        <option value="hr">HR address</option>
+        <option value="general">General inbox only</option>
+      </select>
+      <select id="fQuality" aria-label="Quality">
+        <option value="">Any quality</option>
+        <option value="high">High</option>
+        <option value="medium">Medium</option>
+        <option value="low">Low</option>
+      </select>
+      <select id="fGroup" aria-label="Group by">
+        <option value="">No grouping</option>
+        <option value="country">Group by country</option>
+        <option value="sectors">Group by sector</option>
+        <option value="association">Group by source</option>
+      </select>
+      <select id="fSort" aria-label="Sort">
+        <option value="name">Name A–Z</option>
+        <option value="quality">Best evidenced first</option>
+        <option value="checked">Recently checked</option>
+        <option value="country">Country, then name</option>
+      </select>
+      <button class="ghost" type="button" id="btnClear">Clear</button>
+    </div>
+    <div id="chips" class="chips"></div>
+    <div class="card pad0">
+      <div id="tableWrap"></div>
+      <div id="pager" class="pager"></div>
+    </div>
+  </section>
+
+  <!-- ---------------------------------------------------------------- sources -->
+  <section id="v-sources" class="view" hidden>
+    <div class="card">
+      <h2>Add an association</h2>
+      <p class="muted">Paste the page that lists the members. The next crawl reads it; no
+        selectors, no code. Check first that the directory may be read automatically —
+        its terms and its <span class="mono">robots.txt</span> — because this starts a
+        crawler against somebody else's server.</p>
+      <form id="addForm" class="addform" autocomplete="off">
+        <label class="field grow2">
+          <span class="k">Member directory URL</span>
+          <input type="url" id="aUrl" placeholder="https://www.example.org/mitglieder/" required>
+        </label>
+        <label class="field">
+          <span class="k">Country</span>
+          <select id="aCountry" required></select>
+        </label>
+        <label class="field">
+          <span class="k">Sector</span>
+          <select id="aSector" required></select>
+        </label>
+        <label class="field grow2">
+          <span class="k">Association name <span class="muted">(optional)</span></span>
+          <input type="text" id="aName" placeholder="Pharma Deutschland e.V.">
+        </label>
+        <label class="field grow2">
+          <span class="k">Add it disabled, with this reason <span class="muted">(optional)</span></span>
+          <input type="text" id="aReason" placeholder="robots.txt disallows the member list">
+        </label>
+        <button class="btn primary" type="submit" id="btnAdd">Add source</button>
+        <p id="addMsg" class="msg" hidden></p>
+      </form>
+    </div>
+    <div class="card">
+      <div class="cardhead"><h2>Sources in the dataset</h2></div>
+      <div id="sources"></div>
+    </div>
+  </section>
+
+  <!-- ---------------------------------------------------------------- runs -->
+  <section id="v-runs" class="view" hidden>
+    <div class="card">
+      <h2>Start a crawl</h2>
+      <p class="muted">A crawl runs on its own schedule twice a week. Start one by hand when
+        you have just added a source and do not want to wait. One runs at a time.</p>
+      <div class="row">
+        <button class="btn primary" type="button" id="btnCrawl">Start a crawl</button>
+        <label class="check"><input type="checkbox" id="crawlDry"> <span>Dry run — crawl and report, write nothing</span></label>
+      </div>
+      <p id="crawlMsg" class="msg" hidden></p>
+    </div>
+    <div class="card">
+      <div class="cardhead"><h2>Runs</h2><a id="actionsLink2" class="muted" target="_blank" rel="noopener">on GitHub ↗</a></div>
+      <div id="runs2"><p class="muted">Loading…</p></div>
+    </div>
+  </section>
+</main>
+
+<script>
+{{/* Configuration comes from hugo.toml, so the repository this console speaks to is not
+     typed by whoever opens the page. */}}
+const CFG = {
+  runner: {{ .Site.Params.runner | jsonify }},
+  engine: {{ .Site.Params.engine | jsonify }},
+  requireAdmin: {{ if eq .Site.Params.require_admin false }}false{{ else }}true{{ end }},
+  schema: "eucd.companies/1"
+};
+</script>
+{{ $js := resources.Get "js/console.js" | minify }}
+<script>{{ $js.Content | safeJS }}</script>
+</body>
+</html>

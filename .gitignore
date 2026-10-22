@@ -1,0 +1,16 @@
+# Build output.
+/public/
+/resources/
+.hugo_build.lock
+
+# This repository must never hold a dataset. These patterns are a backstop for a
+# well-meaning copy, not a substitute for the CI check that greps the built site.
+/data/
+companies.json
+companies.csv
+*.db
+
+.DS_Store
+
+# Local UI testing only, never committed.
+/static/__testdata.json

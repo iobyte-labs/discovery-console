@@ -7,7 +7,7 @@
       each company's own site, and records the recruitment contacts those companies chose to
       publish — with the page each one was read from, and the date.</p>
     <div class="row mt">
-      <a class="btn primary" href="/app/">Open the console</a>
+      <a class="btn primary" href="{{ with .Site.GetPage "/app" }}{{ .RelPermalink }}{{ end }}">Open the console</a>
       <a class="btn quiet" href="https://github.com/{{ .Site.Params.engine }}">Read the engine</a>
     </div>
   </div>

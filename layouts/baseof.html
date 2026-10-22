@@ -11,7 +11,7 @@
                style-src 'self' 'unsafe-inline'; script-src 'unsafe-inline';
                base-uri 'none'; form-action 'none'{{ if hugo.IsServer }};
                connect-src ws://localhost:* http://localhost:*{{ end }}">
-{{ $css := resources.Get "css/main.css" | minify }}
+{{ $css := resources.Get "css/main.css" | resources.ExecuteAsTemplate "css/main.css" . | minify }}
 <style>{{ $css.Content | safeCSS }}</style>
 {{ $js := resources.Get "js/site.js" | minify }}
 <script>{{ $js.Content | safeJS }}</script>
@@ -20,16 +20,16 @@
 
 <header class="site">
   <div class="wrap">
-    <a class="brand" href="/"><span class="mark" aria-hidden="true">CD</span> Company Discovery</a>
+    <a class="brand" href="{{ .Site.Home.RelPermalink }}"><span class="mark" aria-hidden="true">CD</span> Company Discovery</a>
     <nav>
       {{ range .Site.Menus.main }}
         {{ if ne .URL "/app/" }}
-          <a href="{{ .URL }}"{{ if $.IsMenuCurrent "main" . }} aria-current="page"{{ end }}>{{ .Name }}</a>
+          <a href="{{ .URL | relURL }}"{{ if $.IsMenuCurrent "main" . }} aria-current="page"{{ end }}>{{ .Name }}</a>
         {{ end }}
       {{ end }}
       <span id="sessionBox"></span>
       <button class="ghost" type="button" onclick="toggleTheme()">Theme</button>
-      <a class="cta keep" href="/app/">Open the console</a>
+      <a class="cta keep" href="{{ with .Site.GetPage "/app" }}{{ .RelPermalink }}{{ end }}">Open the console</a>
     </nav>
   </div>
 </header>

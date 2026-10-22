@@ -12,13 +12,13 @@
                style-src 'self' 'unsafe-inline'; script-src 'unsafe-inline';
                base-uri 'none'; form-action 'none';
                connect-src https://api.github.com{{ if hugo.IsServer }} ws://localhost:* http://localhost:*{{ end }}">
-{{ $css := resources.Get "css/console.css" | minify }}
+{{ $css := resources.Get "css/console.css" | resources.ExecuteAsTemplate "css/console.css" . | minify }}
 <style>{{ $css.Content | safeCSS }}</style>
 </head>
 <body>
 
 <header class="bar">
-  <a class="brand" href="/"><span class="mark" aria-hidden="true">CD</span> Console</a>
+  <a class="brand" href="{{ .Site.Home.RelPermalink }}"><span class="mark" aria-hidden="true">CD</span> Console</a>
   <span id="repoPill" class="pill mute" hidden></span>
   <span id="busyPill" class="pill info" hidden><i class="dot"></i> working…</span>
   <span class="grow"></span>

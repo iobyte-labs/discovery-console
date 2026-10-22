@@ -10,6 +10,9 @@ enableRobotsTXT = false
 disableKinds = ["taxonomy", "term", "sitemap", "rss"]
 
 [params]
+  # The Worker that holds the credentials this site cannot. Empty until it is deployed, and
+  # the intake page says so rather than failing at the first upload.
+  worker = ""
   engine = "iobyte-labs/eu-company-discovery"
   runner = "iobyte-labs/discovery-runner"
   description = "A console over a private company-discovery dataset. The site holds nothing; your token reads everything."
@@ -29,9 +32,13 @@ disableKinds = ["taxonomy", "term", "sitemap", "rss"]
   url = "/"
   weight = 1
 [[menu.main]]
+  name = "Apply"
+  url = "/apply/"
+  weight = 2
+[[menu.main]]
   name = "Console"
   url = "/app/"
-  weight = 2
+  weight = 3
 
 [outputs]
   home = ["HTML"]

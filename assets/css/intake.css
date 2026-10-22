@@ -1,0 +1,93 @@
+/* The intake flow. Four steps, one at a time, because the person using this has not seen
+   any of it before and a page showing all four at once reads as a form to fill in rather
+   than a thing to do. */
+
+.steps{display:flex;gap:0;margin:0 0 28px;list-style:none;padding:0;counter-reset:step}
+.steps li{flex:1;min-width:0;position:relative;padding:0 0 0 34px;font-size:.84rem;
+  color:var(--muted);counter-increment:step}
+.steps li::before{content:counter(step);position:absolute;left:0;top:-2px;width:24px;
+  height:24px;border-radius:50%;display:grid;place-items:center;font-size:.78rem;
+  font-weight:600;background:var(--surface-2);color:var(--muted);border:1px solid var(--border)}
+.steps li[aria-current]{color:var(--fg);font-weight:550}
+.steps li[aria-current]::before{background:var(--accent);color:var(--accent-fg);
+  border-color:var(--accent)}
+.steps li[data-done]::before{content:"✓";background:var(--accent-soft);color:var(--accent);
+  border-color:var(--accent-soft)}
+
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);
+  padding:24px;box-shadow:var(--shadow)}
+.panel h2{margin:0 0 6px;font-size:1.15rem;letter-spacing:-.01em}
+.panel .lede{margin:0 0 20px;color:var(--fg-2);font-size:.94rem;max-width:62ch}
+
+/* The drop zone is a label wrapping a hidden input, so a click, a keyboard Enter and a
+   drop all do the same thing without any of them being special-cased. */
+.drop{display:grid;place-items:center;gap:8px;padding:38px 20px;text-align:center;
+  border:2px dashed var(--border);border-radius:var(--r);background:var(--surface-2);
+  cursor:pointer;transition:border-color .15s,background .15s}
+.drop:hover,.drop:focus-within{border-color:var(--accent);background:var(--accent-soft)}
+.drop[data-over]{border-color:var(--accent);background:var(--accent-soft)}
+.drop input[type=file]{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+.drop .big{font-weight:600;color:var(--fg)}
+.drop .small{font-size:.84rem;color:var(--muted)}
+
+.field{display:grid;gap:6px;margin:0 0 16px}
+.field label{font-size:.88rem;font-weight:550}
+.field .hint{font-size:.82rem;color:var(--muted)}
+.field input[type=email],.field input[type=text],.field textarea{
+  font:inherit;padding:10px 12px;border:1px solid var(--border);border-radius:var(--r);
+  background:var(--surface-2);color:var(--fg);width:100%}
+.field input:focus-visible,.field textarea:focus-visible,.drop:focus-within{outline:2px solid var(--accent);outline-offset:1px}
+
+.consent{display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:start;
+  padding:14px;border:1px solid var(--border);border-radius:var(--r);
+  background:var(--surface-2);margin:0 0 18px}
+.consent input{margin-top:3px}
+.consent .what{font-size:.88rem;line-height:1.5}
+.consent .what b{font-weight:600}
+
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:18px}
+.btn{font:inherit;font-weight:550;padding:10px 18px;border-radius:var(--r);cursor:pointer;
+  border:1px solid var(--accent);background:var(--accent);color:var(--accent-fg)}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+.btn.ghost{background:transparent;color:var(--fg);border-color:var(--border)}
+.btn.danger{background:var(--bad);border-color:var(--bad);color:#fff}
+
+.note{padding:12px 14px;border-radius:var(--r);font-size:.88rem;margin:0 0 16px;
+  border:1px solid var(--border-soft)}
+.note.bad{background:color-mix(in srgb,var(--bad) 10%,transparent);border-color:var(--bad);color:var(--fg)}
+.note.warn{background:color-mix(in srgb,var(--warn) 12%,transparent);border-color:var(--warn);color:var(--fg)}
+.note.ok{background:var(--accent-soft);border-color:var(--accent-soft)}
+
+/* The token. Shown once, so it is hard to miss and easy to copy. */
+.token{font-family:var(--mono);font-size:.92rem;word-break:break-all;padding:14px;
+  background:var(--surface-2);border:1px solid var(--border);border-radius:var(--r);
+  margin:10px 0}
+
+.skills{display:grid;gap:8px;margin:0 0 8px}
+.skill{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center}
+.skill input[type=text]{font:inherit;padding:7px 10px;border:1px solid var(--border);
+  border-radius:var(--r);background:var(--surface-2);color:var(--fg);min-width:0}
+.skill input[type=number]{font:inherit;width:72px;padding:7px 10px;border:1px solid var(--border);
+  border-radius:var(--r);background:var(--surface-2);color:var(--fg)}
+.skill button{font:inherit;padding:6px 10px;border-radius:var(--r);cursor:pointer;
+  border:1px solid var(--border);background:transparent;color:var(--muted)}
+.skill button:hover{color:var(--bad);border-color:var(--bad)}
+.aliases{font-size:.8rem;color:var(--muted);font-family:var(--mono);
+  grid-column:1/-1;margin:-4px 0 0}
+
+.facts{margin:0;padding:0;list-style:none;display:grid;gap:8px}
+.facts li{padding:10px 12px;border:1px solid var(--border-soft);border-radius:var(--r);
+  font-size:.9rem;background:var(--surface-2)}
+.facts .id{font-family:var(--mono);font-size:.78rem;color:var(--muted);display:block}
+
+.spinner{display:inline-block;width:14px;height:14px;border:2px solid var(--accent-soft);
+  border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite;
+  vertical-align:-2px;margin-right:7px}
+@keyframes spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.spinner{animation:none}}
+
+@media (max-width:620px){
+  .steps{flex-direction:column;gap:10px}
+  .skill{grid-template-columns:1fr auto}
+  .panel{padding:18px}
+}

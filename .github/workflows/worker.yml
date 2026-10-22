@@ -9,9 +9,9 @@ name: Worker
 on:
   push:
     branches: [main]
-    paths: ["worker/**", ".github/workflows/worker.yml"]
+    paths: ["worker/**", "layouts/**", "assets/**", "content/**", "hugo.toml", ".github/workflows/worker.yml"]
   pull_request:
-    paths: ["worker/**", ".github/workflows/worker.yml"]
+    paths: ["worker/**", "layouts/**", "assets/**", "content/**", "hugo.toml", ".github/workflows/worker.yml"]
   workflow_dispatch:
 
 concurrency:
@@ -22,6 +22,35 @@ permissions:
   contents: read
 
 jobs:
+  site:
+    name: the site builds
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: peaceiris/actions-hugo@v3
+        with:
+          hugo-version: "0.160.1"
+          extended: true
+      - name: Build
+        run: hugo --quiet --destination public
+      # The intake page handles a CV, so the hosts it may reach are listed rather than
+      # inherited. A build that loses the policy is a build that lets any script run on a
+      # page holding somebody's CV.
+      - name: The intake page keeps its content policy
+        run: |
+          set -euo pipefail
+          page=public/apply/index.html
+          test -f "$page" || { echo "::error::the intake page was not built"; exit 1; }
+          for directive in "default-src 'none'" "base-uri 'none'" "form-action 'none'"; do
+            grep -q "$directive" "$page" || {
+              echo "::error::the intake page lost: $directive"; exit 1; }
+          done
+          if grep -qE "connect-src[^;\"]*\*" "$page"; then
+            echo "::error::connect-src must name hosts, never a wildcard"; exit 1
+          fi
+          echo "content policy intact"
+
   envelope:
     name: CV envelope, both readers
     runs-on: ubuntu-latest

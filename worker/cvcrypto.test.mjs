@@ -76,18 +76,3 @@ test("the envelope carries what an attachment needs", async () => {
   assert.equal(envelope.content_type, "application/pdf");
   assert.ok(envelope.encrypted_at, "a retention policy needs to know when this was written");
 });
-
-// Written for the Python reader to consume: the two languages must agree or a CV cannot be
-// attached to the email it was kept for.
-test("writes an interop fixture", async () => {
-  const { writeFileSync } = await import("node:fs");
-  const key = await generateKey();
-  const envelope = await encryptCV(TEXT, key, {
-    filename: "CV.pdf",
-    contentType: "application/pdf",
-  });
-  writeFileSync(
-    process.env.INTEROP_FIXTURE || "/tmp/cv-interop.json",
-    JSON.stringify({ key, envelope, plaintext: TEXT }, null, 2),
-  );
-});

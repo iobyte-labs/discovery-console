@@ -93,13 +93,13 @@ def test_a_cv_encrypted_in_the_worker_decrypts_here(tmp_path):
     fixture = tmp_path / "interop.json"
     worker = Path(__file__).parent
     result = subprocess.run(
-        ["node", "--test", "--test-name-pattern=interop fixture", str(worker)],
+        ["node", str(worker / "make-interop-fixture.mjs"), str(fixture)],
         capture_output=True,
         text=True,
-        env={**os.environ, "INTEROP_FIXTURE": str(fixture)},
         cwd=worker,
     )
-    assert fixture.exists(), f"node did not write the fixture:\n{result.stdout}\n{result.stderr}"
+    assert result.returncode == 0, f"the fixture writer failed:\n{result.stdout}\n{result.stderr}"
+    assert fixture.exists(), f"no fixture at {fixture}:\n{result.stdout}\n{result.stderr}"
 
     blob = json.loads(fixture.read_text())
     cv = decrypt_cv(blob["envelope"], blob["key"])

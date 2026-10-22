@@ -273,6 +273,18 @@ const ORDER = ["ok", "not_attempted", "blocked", "refused", "error"];
 const KIND = { recruitment: "recruitment", hr: "HR", general: "general inbox", other: "other" };
 
 const best = c => (c.contacts || [])[0] || null;
+
+// A label is a judgement — today a model's — and is kept well away from the fields that
+// record what a page actually said. The console shows it as an opinion, with what decided
+// it, so a reader can disagree.
+const MEMBERSHIP = "sector_membership";
+const LABEL_TEXT = {
+  member: "works in the sector",
+  service_provider: "sells services to it",
+  unrelated: "unrelated",
+  unknown: "could not tell"
+};
+const labelOf = (c, kind) => (c.labels || []).find(l => l.kind === kind) || null;
 const sectorsOf = c => c.sectors || [];
 const assocsOf = c => (c.sources || []).map(s => s.association_slug);
 
@@ -421,6 +433,7 @@ function filtered() {
   const country = $("#fCountry").value, sector = $("#fSector").value;
   const status = $("#fStatus").value, contact = $("#fContact").value;
   const quality = $("#fQuality").value, sort = $("#fSort").value;
+  const kind = $("#fLabel").value;
 
   let rows = S.companies.filter(c => {
     const contacts = c.contacts || [];
@@ -428,6 +441,11 @@ function filtered() {
     if (sector && !sectorsOf(c).includes(sector)) return false;
     if (status && (c.crawl_status || "not_attempted") !== status) return false;
     if (quality && c.data_quality !== quality) return false;
+    if (kind) {
+      const judged = labelOf(c, MEMBERSHIP);
+      if (kind === "none" && judged) return false;
+      if (kind !== "none" && (!judged || judged.label !== kind)) return false;
+    }
     if (contact === "has" && !contacts.length) return false;
     if (contact === "none" && contacts.length) return false;
     if (["recruitment", "hr"].includes(contact) && !contacts.some(x => x.kind === contact)) return false;
@@ -597,6 +615,18 @@ function detailRow(c) {
     }
   });
 
+  const judged = labelOf(c, MEMBERSHIP);
+  if (judged) {
+    block("Judged to be", d => {
+      d.append(el("p", null, LABEL_TEXT[judged.label] || judged.label));
+      if (judged.reason) d.append(el("p", "muted", judged.reason));
+      // Said plainly: this is an opinion, and whose.
+      d.append(el("p", "muted",
+        `an opinion from ${judged.source}, not something the page states` +
+        (judged.created_at ? ` · ${String(judged.created_at).slice(0, 10)}` : "")));
+    });
+  }
+
   block("Provenance", d => {
     const ul = el("ul");
     for (const s of (c.sources || [])) {
@@ -763,12 +793,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
   const rerender = debounce(() => { S.page = 1; renderCompanies(); }, 160);
   $("#q").addEventListener("input", rerender);
-  for (const id of ["#fCountry", "#fSector", "#fStatus", "#fContact", "#fQuality", "#fGroup", "#fSort"]) {
+  for (const id of ["#fCountry", "#fSector", "#fStatus", "#fContact", "#fQuality", "#fLabel",
+    "#fGroup", "#fSort"]) {
     $(id).addEventListener("change", () => { S.page = 1; renderCompanies(); });
   }
   $("#btnClear").addEventListener("click", () => {
     $("#q").value = "";
-    for (const id of ["#fCountry", "#fSector", "#fStatus", "#fContact", "#fQuality", "#fGroup"]) $(id).value = "";
+    for (const id of ["#fCountry", "#fSector", "#fStatus", "#fContact", "#fQuality",
+      "#fLabel", "#fGroup"]) $(id).value = "";
     $("#fSort").value = "name";
     S.chip = ""; S.page = 1;
     renderChips(); renderCompanies();

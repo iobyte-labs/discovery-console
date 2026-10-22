@@ -45,9 +45,42 @@ file survives in every clone and every fork — so removing the file is a promis
 be kept. Destroying the key makes every copy unreadable at once, including the copies nobody
 controls.
 
-## Not built yet
+## The routes
 
-The Worker itself: the `/api/intake` route, the KV bindings, the OpenRouter call and the
-GitHub write. Only the envelope and its two readers exist so far, which is deliberate — it
-is the part that is hard to change later, because a CV encrypted under one format has to
-stay readable.
+| | |
+|---|---|
+| `POST /api/intake` | First upload. Mints a seeker, extracts a profile, encrypts the CV, writes three files, returns the profile and a one-time token. |
+| `PUT /api/profile` | Saves a profile the seeker edited. Rebuilt from a whitelist, never trusted as sent. |
+| `DELETE /api/seeker` | Erasure. Destroys the key first, then removes the files. |
+| `GET /api/health` | Says `{"ok":true}` and deliberately nothing about whether keys are configured. |
+
+## What it refuses
+
+Everything here is reachable by anyone who finds the URL, and behind it sit a token that
+writes to a private repository and a key with a quota. So most of the Worker is refusals:
+
+- **One origin, no wildcard.** Any page that may call this from a browser is a page that may
+  spend the quota and write to the repository.
+- **Consent before a model call.** Extraction sends the CV to a model. Without
+  `consent: true` nothing is sent, and the test asserts the model was not reached.
+- **Five uploads an hour per address**, because an upload costs a model call from a shared
+  free tier.
+- **256 KB bodies**, checked before anything is parsed.
+- **A seeker speaks only for themselves.** Presenting a valid token against somebody else's
+  id is a 401, not a read.
+- **No internals in a response.** A failure is logged and the browser gets a sentence; the
+  test checks that a repository name and a token cannot appear in an error.
+
+## Deploying
+
+```bash
+wrangler kv namespace create SEEKERS       # put the id in wrangler.toml
+wrangler secret put GITHUB_TOKEN           # fine-grained, Contents:write, one repo, with an expiry
+wrangler secret put OPENROUTER_API_KEY
+wrangler deploy
+```
+
+`wrangler.toml` is committed and holds nothing secret. The KV namespace is the only place a
+CV key exists, so choose its **backup** retention deliberately: too little and a lost key is
+an unreadable CV with no recovery, too much and a destroyed key lives on in a backup, which
+defeats erasure.

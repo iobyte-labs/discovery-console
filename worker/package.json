@@ -1,0 +1,11 @@
+{
+  "name": "eucd-cv-intake",
+  "private": true,
+  "type": "module",
+  "description": "The Worker that holds the credentials a GitHub Pages site cannot.",
+  "scripts": {
+    "test": "node --test .",
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  }
+}
